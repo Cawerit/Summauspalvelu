@@ -1,6 +1,9 @@
 package com.cawerit.summauspalvelu;
 
 import com.cawerit.summauspalvelu.services.ConnectionService;
+import com.cawerit.summauspalvelu.services.PortService;
+import com.cawerit.summauspalvelu.services.SumService;
+import com.cawerit.summauspalvelu.services.TestService;
 
 import java.net.*;
 
@@ -48,31 +51,6 @@ public class WorkManager extends ConnectionService {
         }
     }
 
-    /**
-     * Pyrkii ottamaan vastaan palvelimen hyväksynnän yhteydenotosta.
-     * @param timeout Yläraja vastaanotolle, eli kuinka monta millisekuntia palvelimen vastausta maksimissaan odotetaan.
-     * @return Soketti, jolla on hyväksytty yhteys palvelimelle tai null, jos yhteyttä ei voitu muodostaa aikarajan sisällä
-     */
-    private Socket getConnection(ServerSocket from, int timeout){
-        System.out.println("client: Waiting for the server to respond...");
-        Socket response = null;
-        try {
-            from.setSoTimeout(timeout);//Merkataan odotettava aika
-            response = from.accept();//Otetaan vastaus
-            System.out.println("client: ...response received.");
-        } catch (Exception e) {
-        } finally {
-            return response;
-        }
-    }
-
-
-    /**
-     * Sulkee avatut socketit
-     */
-    public void close(){
-        super.close();
-    }
 
 
     @Override
@@ -103,8 +81,20 @@ public class WorkManager extends ConnectionService {
 
             if(client == null) System.out.println("client: Server didn't respond. Shutting down.");
             else{
-                this.setSocket(client);
-                super.run();//Kun yhteys on muodostettu, voidaan aloittaa palvelimen seuranta
+
+                //Kun yhteys on muodostettu, voidaan aloittaa palvelimen seuranta
+
+                new PortService(client, portGen){
+
+                    public void onComplete(SumService[] created){
+                        System.out.println("Port service completed");
+                        new TestService(getInputStream(), getOutputStream(), created).start();
+                        super.onComplete(created);
+                    }
+
+                }.start();
+
+
             }
 
 
