@@ -22,17 +22,14 @@ public class Summauspalvelu {
           }
         }.start();
 
-        new Thread(){//Käynnistetään oma palvelin X
-            public void run(){
-                System.out.println("Oma palvelin");
-                //Merkataan, että palvelimen Y käyttämää porttia ei voida käyttää tässä ohjelmassa
-                ArrayList<Integer> reserved = new ArrayList<>(1);
-                reserved.add(new Integer(SERVER_PORT));
+        System.out.println("Oma palvelin");
+        //Merkataan, että palvelimen Y käyttämää porttia ei voida käyttää tässä ohjelmassa
+        ArrayList<Integer> reserved = new ArrayList<>(1);
+        reserved.add(new Integer(SERVER_PORT));
 
-                //Otetaan yhteyttä palvelimeen aloittamalla summauspalvelu
-                new WorkManager(SERVER_PORT, new PortGenerator(SERVER_PORT-2, reserved))
-                    .close();//Huom! Tätä kutsutaan vasta kun manager sulkee itsensä
-            }
-        }.start();
+        //Otetaan yhteyttä palvelimeen aloittamalla summauspalvelu
+        new WorkManager(SERVER_PORT, new PortGenerator(SERVER_PORT-2, reserved))
+                .start();
+
     }
 }

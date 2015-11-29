@@ -1,16 +1,17 @@
 package com.cawerit.summauspalvelu;
 
+import com.cawerit.summauspalvelu.services.ConnectionService;
+
 import java.net.*;
-import java.rmi.server.RMIClientSocketFactory;
 
 /**
  * Vastaa palvelinten välisestä yhteydestä
  */
-public class WorkManager{
+public class WorkManager extends ConnectionService {
 
     private PortGenerator portGen;
     private final Integer MANAGER_PORT;
-    private Socket socket;
+    private final Integer SERVER_PORT;
 
     /**
      * @param serverPort Palvelimen portti
@@ -18,37 +19,11 @@ public class WorkManager{
      */
     public WorkManager(int serverPort, PortGenerator portGen){
 
+        super();
+
         this.portGen = portGen;
         this.MANAGER_PORT = portGen.next();
-
-        ServerSocket server;
-        Socket client;
-        int attemptsLeft = 5;
-
-        try {
-
-            server = new ServerSocket(MANAGER_PORT);
-
-            do {
-                // #1: Lähetetään palvelimelle portti johon se voi ottaa yhteyttä (MANAGER_PORT)
-                sendPort(serverPort);
-
-                // #2: Odotetaan että palvelin hyväksyy yhteyden
-                client = getConnection(server, 5000);
-
-                //Yritetään uudestaan kunnes palvelin vastaa, kuitenkin korkeintaan 5 kertaa
-            } while (client == null && --attemptsLeft > 0);
-
-
-            if(client == null) System.out.println("Palvelin ei vastannut. Ohjelma lopetetaan.");
-
-            this.socket = client;//Sallitaan
-
-        } catch (Exception e){
-            System.out.println("Virhe ohjelman suorituksessa");
-            e.printStackTrace();
-        }
-
+        this.SERVER_PORT = serverPort;
 
     }
 
@@ -62,13 +37,13 @@ public class WorkManager{
             //Lähetetään se annettuun palvelimen porttiin
             DatagramSocket socket = new DatagramSocket();
             socket.send(packet);
-            System.out.println("Porttinumero lähetetty palvelimelle.");
+            System.out.println("Portnumber sent to server.");
 
         } catch (UnknownHostException e) {//Datagram packetin luonti voi nostaa vain tämän virheen
-            System.out.println("Virhe UDP paketin luonnissa!");
+            System.out.println("Exception occurred when creating a DatagramPacket");
             e.printStackTrace();
         } catch(Exception e){//Socketin luonti voi nostaa useita
-            System.out.println("Virhe socketin luonnissa!");
+            System.out.println("Exception occurred when creating a DatagramSocket");
             e.printStackTrace();
         }
     }
@@ -79,14 +54,13 @@ public class WorkManager{
      * @return Soketti, jolla on hyväksytty yhteys palvelimelle tai null, jos yhteyttä ei voitu muodostaa aikarajan sisällä
      */
     private Socket getConnection(ServerSocket from, int timeout){
-        System.out.println("Odotetaan vastausta");
+        System.out.println("client: Waiting for the server to respond...");
         Socket response = null;
         try {
             from.setSoTimeout(timeout);//Merkataan odotettava aika
             response = from.accept();//Otetaan vastaus
-            System.out.println("Vastaus saatiin!");
+            System.out.println("client: ...response received.");
         } catch (Exception e) {
-            System.out.println("Virhe hakiessa vastausta");
         } finally {
             return response;
         }
@@ -97,10 +71,47 @@ public class WorkManager{
      * Sulkee avatut socketit
      */
     public void close(){
-
+        super.close();
     }
 
 
+    @Override
+    public void run(){
+
+        //Huom! Tässä ei kutsuta metodia super.run, koska ServerConnection-luokan run
+        //odottaa että yhteys palvelimeen on jo saavutettu! Kutsutaan yläluokan metodia siis
+        //vasta myöhemmin.
+
+        ServerSocket server;
+        Socket client;
+        int attemptsLeft = 5;
+
+        try {
+
+            server = new ServerSocket(MANAGER_PORT);
+
+            do {
+                // #1: Lähetetään palvelimelle portti johon se voi ottaa yhteyttä (MANAGER_PORT)
+                sendPort(this.SERVER_PORT);
+
+                // #2: Odotetaan että palvelin hyväksyy yhteyden
+                client = getConnection(server, 5000);
+
+                //Yritetään uudestaan kunnes palvelin vastaa, kuitenkin korkeintaan 5 kertaa
+            } while (client == null && --attemptsLeft > 0);
+
+
+            if(client == null) System.out.println("client: Server didn't respond. Shutting down.");
+            else{
+                this.setSocket(client);
+                super.run();//Kun yhteys on muodostettu, voidaan aloittaa palvelimen seuranta
+            }
+
+
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+    }
 
 
 }
