@@ -50,9 +50,10 @@ public class WorkManager {
              * @param created
              */
             @Override
-            public void onComplete(ArrayList<SumService> created){
+            public void onComplete(SumService[] created){
                 super.onComplete(created);
-                new TestService(connector, created).start();
+                new TestService(created).start(connector);//Luodaan uusi TestService
+                this.interrupt();//Lopetetaan PortService
             }
 
         }.start();

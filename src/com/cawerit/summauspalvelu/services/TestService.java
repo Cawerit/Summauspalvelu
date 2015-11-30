@@ -20,19 +20,30 @@ public class TestService extends ConnectionService {
     private final int RESPONSE_MAX = 2;
     private final int RESPONSE_TOTAL = 3;
 
-    ArrayList<SumService> services;
+    SumService[] services;
 
-    public TestService(ConnectionStrategy connector, ArrayList<SumService> sumServices){
+    public TestService(ConnectionStrategy connector, SumService[] sumServices){
         super(connector);
         this.services = sumServices;
+    }
+    public TestService(SumService[] services){
+        this(null, services);
     }
 
 
     @Override
+    public int readInt() throws java.io.IOException, java.lang.InterruptedException {
+        int result = super.readInt();
+        System.out.println("Testi " + result + " alkaa pian.");
+        //Thread.sleep(3000);
+        //System.out.println("Waiting done");
+        return result;
+    }
+
+    @Override
     public void answer(int message) throws java.io.IOException{
 
-        Stream<SumService> stream = services.stream();
-
+        Stream<SumService> stream = Arrays.stream(services);
 
         int result;
 
@@ -42,7 +53,6 @@ public class TestService extends ConnectionService {
                 result = stream
                         .mapToInt(SumService::getSum)
                         .sum();
-                System.out.println("Summattu nyt " + result);
                 break;
 
             case RESPONSE_MAX:
@@ -75,7 +85,7 @@ public class TestService extends ConnectionService {
 
     @Override
     public void interrupt(){
-        services.stream()
+        Arrays.stream(services)
                 .filter(s -> !isInterrupted())
                 .forEach(s -> s.interrupt());
         super.interrupt();

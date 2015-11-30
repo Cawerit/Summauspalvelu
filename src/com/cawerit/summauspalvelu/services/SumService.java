@@ -24,7 +24,7 @@ public class SumService extends ConnectionService {
         this.IDENTIFIER = identifier;
     }
 
-    public int getSum(){ return sum; }
+    public int getSum(){ System.out.println("client: Säikeen " + IDENTIFIER + " summalaskuria kutsutaan " + sum); return sum; }
     public int getCalls() { return calls; }
 
     /**
@@ -38,7 +38,7 @@ public class SumService extends ConnectionService {
             onComplete();
             interrupt();
         } else {
-            System.out.println("SumService vastaa " + message);
+            System.out.println("client: Säie " + IDENTIFIER + " summaa lisää " + message);
             sum += message;
             calls++;
         }

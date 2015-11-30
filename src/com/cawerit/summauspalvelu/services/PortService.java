@@ -30,7 +30,7 @@ public class PortService extends ConnectionService{
     public void answer(int message){
         System.out.println("client:\tServer sent us: " + message);
 
-        ArrayList<SumService> services = new ArrayList<SumService>(message);
+        SumService[] services = new SumService[message];
 
         try {
             for (int i = 0; i < message; i++) {
@@ -39,7 +39,7 @@ public class PortService extends ConnectionService{
                 super.answer(port);
                 SumService created = new SumService(new ExpectedConnection(port, 5000), i+1);
                 created.start();
-                services.add(created);
+                services[i] = created;
             }
 
             this.onComplete(services);
@@ -50,8 +50,11 @@ public class PortService extends ConnectionService{
 
     }
 
-
-    public void onComplete(ArrayList<SumService> created){
+    /**
+     * Tämän callbackin voi halutessaan ylikirjoittaa. Sitä kutsutaan kun kaikki SumServicet on luotu.
+     * @param created Lista luoduista summaimista
+     */
+    public void onComplete(SumService[] created){
         super.onComplete();
     }
 

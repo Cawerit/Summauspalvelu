@@ -24,6 +24,17 @@ public class ConnectionService extends Thread {
     public ConnectionService(ConnectionStrategy connector){
         this.connector = connector;
     }
+    public ConnectionService(){ this(null); }
+
+    /**
+     * Suorittaa connectorin varaamisen synkronisesti.
+     * @param connector
+     */
+    public void start(ConnectionStrategy connector){
+        this.connector = connector;
+        connector.connect(c -> this.connection = c);
+        super.start();//Aloitetaan thread kun alkuvalmistelut on tehty
+    }
 
 
     /**
@@ -32,7 +43,7 @@ public class ConnectionService extends Thread {
      * @param message Lähetettävä viesti
      */
     protected void answer(int message) throws java.io.IOException{
-        System.out.println("client: Answering with message " + message);
+        //System.out.println("client: Answering with message " + message);
         ObjectOutputStream out = connection.getOutput();
         out.writeInt(message);
         out.flush();
@@ -58,10 +69,12 @@ public class ConnectionService extends Thread {
 
     @Override
     public void run(){
-        this.connector.connect(c -> {
-            connection = c;
-            keepReading();
-        });
+        if(connection == null) {
+            this.connector.connect(c -> {
+                connection = c;
+                keepReading();
+            });
+        } else keepReading();
     }
 
     /**

@@ -29,6 +29,7 @@ public abstract class ConnectionStrategy {
      * Huom! whenConnected-metodia kutsutaan vasta kun isOccupied() palauttaa false.
      */
     public void connect(Consumer<Connection> whenConnected){
+        System.out.println("Connecting...");
         if(!isClosed()) {
 
             if(activeConnection == null){
@@ -51,19 +52,23 @@ public abstract class ConnectionStrategy {
      * Huom! Tämä on eri asia kuin release, joka luovuttaa yhteyden käyttöoikeuden muualle.
      */
     public void close(){
-        this.closed = true;
-        try {
-            this.activeConnection.output.close();
-            this.activeConnection.input.close();
-        } catch(Exception e){
-            e.printStackTrace();
+        System.out.println("Trying to close " + (!this.occupied && !this.closed));
+        if(!this.occupied && !this.closed) {
+            this.closed = true;
+            try {
+                this.activeConnection.output.close();
+                this.activeConnection.input.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     };
 
 
     public void release(){
+        System.out.println("releasing " + pending.size());
         this.occupied = false;
-
+        runNextCallback();
     }
 
     public boolean isClosed(){
