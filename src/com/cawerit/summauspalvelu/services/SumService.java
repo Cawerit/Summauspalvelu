@@ -1,5 +1,7 @@
 package com.cawerit.summauspalvelu.services;
 
+import com.cawerit.summauspalvelu.connectors.ConnectionStrategy;
+
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -11,9 +13,15 @@ public class SumService extends ConnectionService {
     private int sum;
     private int calls;
 
-    public SumService(ServerSocket socket){
-        super(socket);
+    /**
+     * Numero jolla luodun SumService-olion voi myöhemmin erottaa muista, vaikka ne sisältävää listaa uudelleenjärjestettäisiin.
+     */
+    public final int IDENTIFIER;
+
+    public SumService(ConnectionStrategy connector, int identifier){
+        super(connector);
         sum = calls = 0;
+        this.IDENTIFIER = identifier;
     }
 
     public int getSum(){ return sum; }
@@ -27,11 +35,14 @@ public class SumService extends ConnectionService {
     public void answer(int message){
         //HUOM! Tässä ei tarkoituksella kutsuta super.answer, sillä palvelin ei odota suoraa vastausta summauspyyntöön
         if(message == 0){
-            System.out.println("Nyt pitäis lopettaa");
+            onComplete();
+            interrupt();
         } else {
+            System.out.println("SumService vastaa " + message);
             sum += message;
             calls++;
         }
     }
+
 
 }

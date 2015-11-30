@@ -1,16 +1,18 @@
 package com.cawerit.summauspalvelu;
 
-import com.cawerit.summauspalvelu.services.ConnectionService;
+import com.cawerit.summauspalvelu.connectors.ConnectionStrategy;
+import com.cawerit.summauspalvelu.connectors.UnpreparedConnection;
 import com.cawerit.summauspalvelu.services.PortService;
 import com.cawerit.summauspalvelu.services.SumService;
 import com.cawerit.summauspalvelu.services.TestService;
 
 import java.net.*;
+import java.util.ArrayList;
 
 /**
  * Vastaa palvelinten välisestä yhteydestä
  */
-public class WorkManager extends ConnectionService {
+public class WorkManager {
 
     private PortGenerator portGen;
     private final Integer MANAGER_PORT;
@@ -22,11 +24,38 @@ public class WorkManager extends ConnectionService {
      */
     public WorkManager(int serverPort, PortGenerator portGen){
 
-        super();
-
         this.portGen = portGen;
         this.MANAGER_PORT = portGen.next();
         this.SERVER_PORT = serverPort;
+
+
+        // #1: Muodostetaan yhteys palvelimeen
+        //Luodaan ConnectionStrategy, joka yrittää 5 kertaa ottaa yhteyttä palvelimeen, kutsuen joka välissä metodia sendPort
+        ConnectionStrategy connector = new UnpreparedConnection(MANAGER_PORT, 5000, 5) {
+            @Override
+            public void prepare() {//Tätä kutsutaan kun UnpreparedConnection yrittää muodostaa yhteyttä palvelimelle
+                sendPort(SERVER_PORT);
+            }
+        };
+
+        //Ylläoleva ei vielä itsessään suorita mitään, muodostetaan nopea kättely palvelimen kanssa
+        connector.connect(null);
+
+        //Kun yhteys on muodostettu, voidaan aloittaa palvelimen seuranta
+        //(ConnectionStrategy huolehtii siitä että PortService aloittaa kutsut vasta kun portit on saatu
+        new PortService(connector, portGen){
+            /**
+             * Tätä ylikirjoitettua metodia kutsutaan callbackina kun PortService on tehnyt tehtävänsä eli
+             * luonut kaikki tarvittavat SumServicet. Välitetään luodut SumServicet TestServicelle tarkkailtavaksi.
+             * @param created
+             */
+            @Override
+            public void onComplete(ArrayList<SumService> created){
+                super.onComplete(created);
+                new TestService(connector, created).start();
+            }
+
+        }.start();
 
     }
 
@@ -40,7 +69,6 @@ public class WorkManager extends ConnectionService {
             //Lähetetään se annettuun palvelimen porttiin
             DatagramSocket socket = new DatagramSocket();
             socket.send(packet);
-            System.out.println("Portnumber sent to server.");
 
         } catch (UnknownHostException e) {//Datagram packetin luonti voi nostaa vain tämän virheen
             System.out.println("Exception occurred when creating a DatagramPacket");
@@ -50,58 +78,5 @@ public class WorkManager extends ConnectionService {
             e.printStackTrace();
         }
     }
-
-
-
-    @Override
-    public void run(){
-
-        //Huom! Tässä ei kutsuta metodia super.run, koska ServerConnection-luokan run
-        //odottaa että yhteys palvelimeen on jo saavutettu! Kutsutaan yläluokan metodia siis
-        //vasta myöhemmin.
-
-        ServerSocket server;
-        Socket client;
-        int attemptsLeft = 5;
-
-        try {
-
-            server = new ServerSocket(MANAGER_PORT);
-
-            do {
-                // #1: Lähetetään palvelimelle portti johon se voi ottaa yhteyttä (MANAGER_PORT)
-                sendPort(this.SERVER_PORT);
-
-                // #2: Odotetaan että palvelin hyväksyy yhteyden
-                client = getConnection(server, 5000);
-
-                //Yritetään uudestaan kunnes palvelin vastaa, kuitenkin korkeintaan 5 kertaa
-            } while (client == null && --attemptsLeft > 0);
-
-
-            if(client == null) System.out.println("client: Server didn't respond. Shutting down.");
-            else{
-
-                //Kun yhteys on muodostettu, voidaan aloittaa palvelimen seuranta
-
-                new PortService(client, portGen){
-
-                    public void onComplete(SumService[] created){
-                        System.out.println("Port service completed");
-                        new TestService(getInputStream(), getOutputStream(), created).start();
-                        super.onComplete(created);
-                    }
-
-                }.start();
-
-
-            }
-
-
-        } catch (Exception e){
-            e.printStackTrace();
-        }
-    }
-
 
 }

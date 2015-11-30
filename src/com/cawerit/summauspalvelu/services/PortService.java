@@ -1,10 +1,13 @@
 package com.cawerit.summauspalvelu.services;
 
 import com.cawerit.summauspalvelu.PortGenerator;
+import com.cawerit.summauspalvelu.connectors.ConnectionStrategy;
+import com.cawerit.summauspalvelu.connectors.ExpectedConnection;
 
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 
 /**
  * Vastaa summauspalveluiden porttien jakamisesta palvelimelle
@@ -13,8 +16,8 @@ public class PortService extends ConnectionService{
 
     PortGenerator portGen;
 
-    public PortService(Socket socket, PortGenerator portGen){
-        super(socket);
+    public PortService(ConnectionStrategy connector, PortGenerator portGen){
+        super(connector);
         this.portGen = portGen;
     }
 
@@ -27,16 +30,16 @@ public class PortService extends ConnectionService{
     public void answer(int message){
         System.out.println("client:\tServer sent us: " + message);
 
-        SumService[] services = new SumService[message];
+        ArrayList<SumService> services = new ArrayList<SumService>(message);
 
         try {
             for (int i = 0; i < message; i++) {
                 int port = portGen.next();
 
                 super.answer(port);
-                SumService created = new SumService(new ServerSocket(port));
+                SumService created = new SumService(new ExpectedConnection(port, 5000), i+1);
                 created.start();
-                services[i] = created;
+                services.add(created);
             }
 
             this.onComplete(services);
@@ -48,7 +51,7 @@ public class PortService extends ConnectionService{
     }
 
 
-    public void onComplete(SumService[] created){
+    public void onComplete(ArrayList<SumService> created){
         super.onComplete();
     }
 
