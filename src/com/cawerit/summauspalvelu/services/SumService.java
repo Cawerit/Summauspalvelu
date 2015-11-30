@@ -2,6 +2,7 @@ package com.cawerit.summauspalvelu.services;
 
 import com.cawerit.summauspalvelu.connectors.ConnectionStrategy;
 
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -26,6 +27,12 @@ public class SumService extends ConnectionService {
 
     public int getSum(){ System.out.println("client: Säikeen " + IDENTIFIER + " summalaskuria kutsutaan " + sum); return sum; }
     public int getCalls() { return calls; }
+
+    @Override
+    public int readInt() throws IOException, InterruptedException {
+        int res = super.readInt();
+        return res;
+    }
 
     /**
      * Ottaa vastaan palvelimen summauspyynnöt.

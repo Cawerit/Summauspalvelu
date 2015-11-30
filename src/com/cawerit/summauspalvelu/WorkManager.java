@@ -39,7 +39,7 @@ public class WorkManager {
         };
 
         //Ylläoleva ei vielä itsessään suorita mitään, muodostetaan nopea kättely palvelimen kanssa
-        connector.connect(null);
+        //connector.connect();
 
         //Kun yhteys on muodostettu, voidaan aloittaa palvelimen seuranta
         //(ConnectionStrategy huolehtii siitä että PortService aloittaa kutsut vasta kun portit on saatu
@@ -53,7 +53,7 @@ public class WorkManager {
             public void onComplete(SumService[] created){
                 super.onComplete(created);
                 new TestService(created).start(connector);//Luodaan uusi TestService
-                this.interrupt();//Lopetetaan PortService
+                //this.interrupt();//Lopetetaan PortService
             }
 
         }.start();

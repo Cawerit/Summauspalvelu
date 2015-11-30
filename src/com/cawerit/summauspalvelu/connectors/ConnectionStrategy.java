@@ -12,26 +12,19 @@ import java.util.function.Consumer;
 
 public abstract class ConnectionStrategy {
 
-    private ArrayList<Consumer<Connection>> pending;
-
     protected Connection activeConnection;
-
-    private boolean occupied = false;
+    private int connected = 0;
     private boolean closed = false;
 
-
-    public ConnectionStrategy(){
-        this.pending = new ArrayList<>();
-    }
 
     /**
      * Metodi jota kutsutaan säettä suorittaessa palvelinyhteyden saavuttamiseksi.
      * Huom! whenConnected-metodia kutsutaan vasta kun isOccupied() palauttaa false.
      */
-    public void connect(Consumer<Connection> whenConnected){
-        System.out.println("Connecting...");
+    public Connection connect(){
+        System.out.println("Attempt to connect " + isClosed());
         if(!isClosed()) {
-
+            connected++;
             if(activeConnection == null){
                 try {
                     this.setConnection();
@@ -39,12 +32,8 @@ public abstract class ConnectionStrategy {
                     e.printStackTrace();
                 }
             }
-
-            pending.add(whenConnected);
-            if (!isOccupied()){
-                runNextCallback();
-            }
-        }
+            return activeConnection;
+        } else return null;
     }
 
     /**
@@ -52,51 +41,35 @@ public abstract class ConnectionStrategy {
      * Huom! Tämä on eri asia kuin release, joka luovuttaa yhteyden käyttöoikeuden muualle.
      */
     public void close(){
-        System.out.println("Trying to close " + (!this.occupied && !this.closed));
-        if(!this.occupied && !this.closed) {
-            this.closed = true;
+
+        if(connected <= 0 && !isClosed()) {
+            closed = true;
             try {
-                this.activeConnection.output.close();
-                this.activeConnection.input.close();
+                activeConnection.output.close();
+                activeConnection.input.close();
+                cleanup();
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
     };
 
+    /**
+     * Kutsutaan sulkemisen yhteydessä
+     */
+    protected void cleanup(){};
+
 
     public void release(){
-        System.out.println("releasing " + pending.size());
-        this.occupied = false;
-        runNextCallback();
+        connected--;
     }
 
     public boolean isClosed(){
         return closed;
     }
 
-    /**
-     * Yhteyden voi saada käytettäväkseen vain yksi käyttäjä kerrallaan, jotta säästytään
-     * ongelmilta mahdollisen yhtäaikaisen Streamien käytön kanssa. Tämä metodi kertoo onko
-     * ConnectionStrategy "varattu".
-     * @return
-     */
-    public boolean isOccupied(){
-        return occupied;
-    }
 
     protected abstract void setConnection() throws Exception;
-
-
-    private void runNextCallback(){
-        if(pending.size() > 0) {
-            Consumer<Connection> next = pending.remove(0);
-            if(next != null){
-                occupied = true;//Varataan soketti tälle callbackille
-                next.accept(this.activeConnection);//Suoritetaan annettu callback
-            }
-        }
-    }
 
     public static class Connection {
 
@@ -115,12 +88,11 @@ public abstract class ConnectionStrategy {
         }
 
 
-        public ObjectInputStream getInput() {
+        public synchronized ObjectInputStream getInput() {
             return input;
         }
 
-
-        public ObjectOutputStream getOutput() {
+        public synchronized ObjectOutputStream getOutput() {
             return output;
         }
 

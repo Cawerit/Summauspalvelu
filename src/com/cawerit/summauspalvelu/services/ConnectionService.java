@@ -3,6 +3,7 @@ package com.cawerit.summauspalvelu.services;
 
 import com.cawerit.summauspalvelu.connectors.ConnectionStrategy;
 
+import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -32,7 +33,7 @@ public class ConnectionService extends Thread {
      */
     public void start(ConnectionStrategy connector){
         this.connector = connector;
-        connector.connect(c -> this.connection = c);
+        this.connection = connector.connect();
         super.start();//Aloitetaan thread kun alkuvalmistelut on tehty
     }
 
@@ -58,7 +59,7 @@ public class ConnectionService extends Thread {
      */
     protected int readInt() throws java.io.IOException, InterruptedException{
         ObjectInputStream input = connection.getInput();
-        InputStreamReader reader = new InputStreamReader(input);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(input));
         while (!completed && !reader.ready()){//Loop joka loppuu vasta kun palvelimella on vastaus valmiina
             if(this.isInterrupted()){//Tarkistetaan onko säie yritetty lopettaa
                 throw new InterruptedException("Thread interrupted.");
@@ -70,11 +71,9 @@ public class ConnectionService extends Thread {
     @Override
     public void run(){
         if(connection == null) {
-            this.connector.connect(c -> {
-                connection = c;
-                keepReading();
-            });
-        } else keepReading();
+            connection = connector.connect();
+        }
+        keepReading();
     }
 
     /**

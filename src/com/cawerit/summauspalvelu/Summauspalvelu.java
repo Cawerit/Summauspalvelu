@@ -15,7 +15,7 @@ public class Summauspalvelu {
           public void run(){
               System.out.println("Aloitetaan palvelin Y");
               try {//Kutsutaan WorkDistributorin main-metodia
-                  WorkDistributor.main(new String[]{});//Argumentilla "verbose" saadaan palvelin Y jakamaan enemmän tietoa toiminnastaan
+                  WorkDistributor.main(new String[]{"verbose"});//Argumentilla "verbose" saadaan palvelin Y jakamaan enemmän tietoa toiminnastaan
               } catch (Exception e) {
                   e.printStackTrace();
               }

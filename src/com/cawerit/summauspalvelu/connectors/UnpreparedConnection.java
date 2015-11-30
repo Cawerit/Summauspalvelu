@@ -1,6 +1,7 @@
 package com.cawerit.summauspalvelu.connectors;
 
 
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -9,9 +10,7 @@ public abstract class UnpreparedConnection extends ConnectionStrategy {
     private int toPort;
     private int timeout;
     private int maxFailures;
-
-    private boolean closed = false;
-    private boolean occupied = false;
+    private Socket socket;
 
     public UnpreparedConnection(int toPort, int timeout, int maxFailures){
         this.toPort = toPort;
@@ -45,5 +44,16 @@ public abstract class UnpreparedConnection extends ConnectionStrategy {
         } while(attemptsLeft > 0);
 
         this.activeConnection = new ConnectionStrategy.Connection(response.getInputStream(), response.getOutputStream());
+        socket = response;
+    }
+
+    @Override
+    protected void cleanup(){
+        System.out.println("client: Closing socket....");
+        if(socket != null && !socket.isClosed()) try {
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
