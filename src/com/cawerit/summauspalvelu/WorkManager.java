@@ -51,15 +51,26 @@ public class WorkManager {
              */
             @Override
             public void onComplete(SumService[] created){
+
                 super.onComplete(created);
-                new TestService(created).start(connector);//Luodaan uusi TestService
-                //this.interrupt();//Lopetetaan PortService
+
+                new TestService(created){//Luodaan uusi TestService
+                    /**
+                     * Tätä ylikirjoitettua metodia kutsutaan kun TestService on valmis, eli palvelin on lähettänyt luvun 0
+                     */
+                    @Override
+                    public void onComplete(){
+                        super.onComplete();
+                        System.exit(0);//Tämä on viimeinen mitä suoritetaan koko ohjelmassa
+                    }
+
+
+                }.start(connector);
             }
 
         }.start();
 
     }
-
 
     private void sendPort(int serverPort) {
         byte[] data = MANAGER_PORT.toString().getBytes();

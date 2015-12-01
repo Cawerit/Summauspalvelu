@@ -22,7 +22,6 @@ public abstract class ConnectionStrategy {
      * Huom! whenConnected-metodia kutsutaan vasta kun isOccupied() palauttaa false.
      */
     public Connection connect(){
-        System.out.println("Attempt to connect " + isClosed());
         if(!isClosed()) {
             connected++;
             if(activeConnection == null){

@@ -18,6 +18,8 @@ public class ConnectionService extends Thread {
 
     private ConnectionStrategy.Connection connection;
     private ConnectionStrategy connector;
+    private BufferedReader reader;
+    private ObjectInputStream input;
 
     private boolean completed;
 
@@ -58,8 +60,6 @@ public class ConnectionService extends Thread {
      * @throws java.lang.InterruptedException Mikäli säie on yritetty sulkea, heitetään virhe sen merkiksi.
      */
     protected int readInt() throws java.io.IOException, InterruptedException{
-        ObjectInputStream input = connection.getInput();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(input));
         while (!completed && !reader.ready()){//Loop joka loppuu vasta kun palvelimella on vastaus valmiina
             if(this.isInterrupted()){//Tarkistetaan onko säie yritetty lopettaa
                 throw new InterruptedException("Thread interrupted.");
@@ -73,6 +73,8 @@ public class ConnectionService extends Thread {
         if(connection == null) {
             connection = connector.connect();
         }
+        input = connection.getInput();
+        reader = new BufferedReader(new InputStreamReader(input));
         keepReading();
     }
 

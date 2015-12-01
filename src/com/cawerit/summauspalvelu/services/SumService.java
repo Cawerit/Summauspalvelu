@@ -11,27 +11,12 @@ import java.net.Socket;
  */
 public class SumService extends ConnectionService {
 
-    private int sum;
-    private int calls;
+    public final Deposit deposit;
 
-    /**
-     * Numero jolla luodun SumService-olion voi myöhemmin erottaa muista, vaikka ne sisältävää listaa uudelleenjärjestettäisiin.
-     */
-    public final int IDENTIFIER;
 
-    public SumService(ConnectionStrategy connector, int identifier){
+    public SumService(ConnectionStrategy connector, Deposit deposit){
         super(connector);
-        sum = calls = 0;
-        this.IDENTIFIER = identifier;
-    }
-
-    public int getSum(){ System.out.println("client: Säikeen " + IDENTIFIER + " summalaskuria kutsutaan " + sum); return sum; }
-    public int getCalls() { return calls; }
-
-    @Override
-    public int readInt() throws IOException, InterruptedException {
-        int res = super.readInt();
-        return res;
+        this.deposit = deposit;
     }
 
     /**
@@ -42,14 +27,12 @@ public class SumService extends ConnectionService {
     public void answer(int message){
         //HUOM! Tässä ei tarkoituksella kutsuta super.answer, sillä palvelin ei odota suoraa vastausta summauspyyntöön
         if(message == 0){
+            System.out.println("client: Server asked a SumService " + deposit.IDENTIFIER + " to quit");
             onComplete();
             interrupt();
         } else {
-            System.out.println("client: Säie " + IDENTIFIER + " summaa lisää " + message);
-            sum += message;
-            calls++;
+            deposit.add(message);
         }
     }
-
 
 }

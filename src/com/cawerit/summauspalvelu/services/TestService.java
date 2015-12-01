@@ -2,29 +2,32 @@ package com.cawerit.summauspalvelu.services;
 
 import com.cawerit.summauspalvelu.connectors.ConnectionStrategy;
 
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.lang.reflect.Array;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.stream.Stream;
 
 /**
- * Vastaa palvelimen testeihin
+ * Vastaa palvelimen lähettämiin testeihin
  */
 public class TestService extends ConnectionService {
 
-    private final int RESPONSE_CLOSE = 0;
-    private final int RESPONSE_SUM = 1;
-    private final int RESPONSE_MAX = 2;
-    private final int RESPONSE_TOTAL = 3;
+    private final int RESPONSE_CLOSE = 0;//Sulkee yhteyden koko ohjelmaan
+    private final int RESPONSE_SUM = 1;//Lokeroiden yhteenlaskettu summa
+    private final int RESPONSE_MAX = 2;//Lokero jonka summa on suurin
+    private final int RESPONSE_TOTAL = 3;//Yhteenlaskettu kyselyjen määrä
+
+    private int result;
 
     SumService[] services;
+    Deposit[] deposits;
 
     public TestService(ConnectionStrategy connector, SumService[] sumServices){
         super(connector);
-        this.services = sumServices;
+        services = sumServices;
+        deposits = Arrays
+                    .stream(services)
+                    .map(s -> s.deposit)
+                    .toArray(size -> new Deposit[size]);
     }
     public TestService(SumService[] services){
         this(null, services);
@@ -32,46 +35,39 @@ public class TestService extends ConnectionService {
 
 
     @Override
-    public int readInt() throws java.io.IOException, java.lang.InterruptedException {
-        int result = super.readInt();
-        System.out.println("Testi " + result + " alkaa pian.");
-        //Thread.sleep(3000);
-        //System.out.println("Waiting done");
-        return result;
-    }
-
-    @Override
     public void answer(int message) throws java.io.IOException{
 
-        Stream<SumService> stream = Arrays.stream(services);
+        if(message != RESPONSE_CLOSE) waitUntilStable(deposits);
 
+        Stream<Deposit> stream = Arrays.stream(deposits);
         int result;
+
 
         switch(message) {
 
             case RESPONSE_SUM:
                 result = stream
-                        .mapToInt(SumService::getSum)
-                        .sum();
+                        .mapToInt(Deposit::getSum)  //otetaan jokaisen yksittäisen lokeron summa
+                        .sum();                     //ja lasketaan ne yhteen
                 break;
 
             case RESPONSE_MAX:
                 result = stream
-                        .max(Comparator.comparing(SumService::getCalls))
-                        .map(s -> s.IDENTIFIER)
+                        .max(Comparator.comparing(Deposit::getSum)) //etsitään lokero jossa on suurin getSum-arvo
+                        .map(s -> s.IDENTIFIER)                     //ja sitten valitaan löydetystä IDENTIFIER (annettu lokerolle PortServicessä)
                         .orElse(0);
 
                 break;
 
             case RESPONSE_TOTAL:
                 result = stream
-                        .mapToInt(SumService::getCalls)
-                        .sum();
+                        .mapToInt(Deposit::getCount) //otetaan jokaisen lokeron kyselyjen määrä
+                        .sum();                     //ja lasketaan ne yhteen
                 break;
 
-            case RESPONSE_CLOSE:
-                onComplete();
+            case RESPONSE_CLOSE://Suljetaan hallitusti
                 interrupt();
+                onComplete();
                 return;//Kutsutaan tässä return jotta vältytään lähettämästä palvelimelle enempää viestejä
 
             default:
@@ -79,16 +75,51 @@ public class TestService extends ConnectionService {
                 break;
 
         }
+
+        //System.out.print("client: Answering " + result + " for deposits " + Arrays.toString(deposits));
+
         super.answer(result);
 
     }
 
+    /**
+     * Pysäyttää säikeen suorittamisen kunnes deposits-listaan ei ole enää tulossa muutoksia (kaikki summaukset on kirjattu).
+     * Ilman tämän metodin kutsumista joissain tapauksissa TestService tekee laskut ennenaikaisesti ja siksi väärin.
+     *
+     * TODO: Tämä on hack, jolla varmistetaan että summaus on varmasti valmis. Parempikin keino tähän varmasti olisi, tai kyseessä voi olla bugi.
+     * @param deposits Lista lokeroista, joihin ei haluta enää tulevan muutoksia
+     */
+    private void waitUntilStable(Deposit[] deposits){
+        try {
+            int size = deposits.length;
+            int[] current = new int[size];//Vertailulista edellisen kierroksen tuloksista
+            boolean isStable = false;
+            while (!isStable) {
+                isStable = true;
+                for (int i = 0; i < size; i++) {
+                    if (current[i] != deposits[i].getCount()) {//Mikäli uusi ja vanha arvo eivät täsmää
+                        current[i] = deposits[i].getCount();//asetetaan listaan uusi arvo
+                        isStable = false;//ja otetaan uusi kierros
+                    }
+                }
+                if(!isStable) Thread.sleep(100);
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
     @Override
-    public void interrupt(){
+    public void onComplete(){
         Arrays.stream(services)
                 .filter(s -> !isInterrupted())
                 .forEach(s -> s.interrupt());
+    }
+
+    @Override
+    public void interrupt(){
         super.interrupt();
+        this.onComplete();
     }
 
 

@@ -35,9 +35,9 @@ public class PortService extends ConnectionService{
         try {
             for (int i = 0; i < message; i++) {
                 int port = portGen.next();
-
+                Deposit deposit = new Deposit(i+1);
                 super.answer(port);
-                SumService created = new SumService(new ExpectedConnection(port, 5000), i+1);
+                SumService created = new SumService(new ExpectedConnection(port, 5000), deposit);
                 created.start();
                 services[i] = created;
             }
